@@ -1,34 +1,12 @@
 """
-Grading and reward mapping for modded-nanogpt speedrun attempts
-(track_1_short: train to <=3.28 FineWeb val cross-entropy).
-
-The reward measures quality only; speed pressure comes from the shaped
-reward s = r - rho*t downstream:
-
-    r = clip((L_REF - best_val_loss) / (L_REF - L_TARGET), 0, 1)
-    L_TARGET = 3.28   (the official target; r saturates at 1.0 there)
-    L_REF    = 4.20   (weak reference, roughly the llm.c baseline after a
-                       few percent of training; a run above it earns 0)
-
-exec_time = total local process wall (compile included) / wall_scale, used
-for the reward-rate estimate, not the official leaderboard score. The timed
-train ms and the 3.28 crossing are stored as metadata only.
-
-Validity:
-    crash | timeout | parse_failure  -> invalid, reward 0
-A run that completes and prints a parseable val_loss is valid even if it
-never reached 3.28 (partial reward via the map above).
-
-Log-line formats (stdout):
-    step:1390/1390 val_loss:3.2775 train_time:79532ms step_avg:57.22ms
-    step:1390/1390 train_time:79448ms step_avg:57.16ms      (no val_loss)
+Providing feedback on a run's result for reward scoring and self-improvement.
 """
 from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, asdict
 
-L_REF = 4.20
+L_REF = 10
 L_TARGET = 3.28
 # Credited-margin floor quoted to the policy in the attempt feedback.
 # Keep in sync with golf.quality_below_target_floor.
