@@ -1,7 +1,7 @@
 # Reward-rate Policy Gradient for Efficient Machine Learning Engineering Agents
 [![arxiv badge](https://img.shields.io/badge/arXiv-2609.36393-red)](https://arxiv.org/abs/2609.36393)
 
-This repository contains the code implementation for the experiments in our paper. We train language-model agents with *Reward-rate Policy Gradient (RPG)*, which prices every second an attempt takes at the agent's own reward rate, and compare it with vanilla RL on a contextual bandit simulation, MLE-Bench Lite, and the NanoGPT speedrun.
+This repository contains the code implementation for the experiments in our paper. We train language-model agents with *Reward-rate Policy Gradient (RPG)*, which prices every second an attempt takes at the agent's own reward rate. We first validate the approach on contextual bandit simulation and then compare it with vanilla RL on MLE-Bench Lite and the NanoGPT speedrun.
 
 ## Requirements 🛠️
 * Python 3.11. Install all packages with
@@ -47,7 +47,7 @@ bash scripts/preprocess.sh                       # build the prompts and parquet
 bash scripts/run.sh                              # 22 competitions x {rpg, vanilla}, one run after another
 bash scripts/run.sh leaf-classification rpg      # or a single competition and arm
 ```
-`scripts/run.sh` holds the complete training configuration; `REPS=3` repeats each run three times, as in the paper. Runs use all visible GPUs (two A100s in the paper).
+`scripts/run.sh` holds the complete training configuration; `REPS=3` repeats each run three times, as in the paper.
 
 ### NanoGPT Speedrun
 From `nanogpt/`, one arm runs a trainer (4 GPUs) and graders (8 GPUs each) that execute the attempts:
