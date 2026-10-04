@@ -1,0 +1,31 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- Dataset (train.csv, test.csv, sample_submission.csv, and the train_images/ and test_images/ folders) is available in `${MLE_BENCH_DATA}/data/aptos2019-blindness-detection/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict, for each test retinal fundus photograph, the diabetic retinopathy severity `diagnosis`, an INTEGER in {{0, 1, 2, 3, 4}}. The task is evaluated with quadratic weighted kappa.
+- Predictions MUST be integers 0-4, not probabilities or floats. If you use a regressor, round and clip (e.g. `np.clip(np.rint(p), 0, 4).astype(int)`).
+- Your program runs on a single CPU (NO GPU) with 16 GB RAM and is KILLED after about 600 seconds. MEMORY CONSTRAINT: the images total 8 GB (up to 3216x2136 each) and do NOT fit in RAM at full size -- resize each one as you load it, e.g. `Image.open(p).convert("RGB").resize((32, 32))` (PIL comes with torchvision), keep only the tiny copy, and train on a SUBSET of the images if loading is still too slow. Do NOT train a deep CNN or use a pretrained network -- neither finishes in time on one CPU.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format:
+```
+id_code,diagnosis
+b460ca9fa26f,0
+6cee2e148520,2
+ca6842bfcbc9,0
+etc.
+```
+- Train data snippet:
+-> train.csv has 3295 rows and 2 columns: id_code (str, e.g. 2a2274bcb00a), diagnosis (int64, 0-4; imbalanced 0:1628, 1:340, 2:896, 3:176, 4:255). Its image is train_images/<id_code>.png (3295 RGB PNGs of varying size).
+-> test.csv has 367 rows and 1 column, id_code; the matching image is test_images/<id_code>.png. You must predict a diagnosis for every one of the 367 test ids.
+-> sample_submission.csv has 367 rows and gives the required column order (id_code,diagnosis).
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

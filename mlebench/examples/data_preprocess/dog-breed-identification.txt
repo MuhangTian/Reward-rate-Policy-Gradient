@@ -1,0 +1,23 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Dataset (labels.csv, sample_submission.csv, and the train/ and test/ image folders) is available in `${MLE_BENCH_DATA}/data/dog-breed-identification/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict, for each test image, the probability of each of 120 dog breeds. The task is evaluated with multi-class log loss.
+- The 120 probabilities in each row must sum to one. Clip predictions away from exact 0 and 1 (e.g. `np.clip(p, 1e-6, 1 - 1e-6)`) and renormalize each row, otherwise a single confident mistake gives infinite log loss.
+- Your program runs on a single CPU (NO GPU) with 16 GB RAM and is KILLED after about 600 seconds. Keep training cheap: resize every image to e.g. 32x32 with PIL (`from PIL import Image`) as you load it and keep only the tiny copy, and train on a SUBSET of the images if loading all of them is too slow. Do NOT train a deep CNN or use a pretrained network -- neither finishes in time on one CPU.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv must have exactly the same 121 columns as sample_submission.csv: `id` plus the 120 breed columns (affenpinscher, afghan_hound, african_hunting_dog, ..., yorkshire_terrier) in the same order. Format:
+```
+id,affenpinscher,afghan_hound,african_hunting_dog,...
+9f68d045a396679a778eb54c5ed29038,0.0083,0.0083,0.0083,...
+etc.
+```
+- Train data snippet:
+-> labels.csv (in the directory above) has 9199 rows and 2 columns: id (str, e.g. 000bec180eb18c7604dcecc8fe0dba07), breed (str, one of 120 names). Its image is train/<id>.jpg (9199 JPEGs of varying sizes).
+-> test/ has 1023 JPEGs named <id>.jpg; predict a probability row for each.
+-> sample_submission.csv has 1023 rows and gives the required column order. Its id column holds bare hashes with NO file extension; the image for a row is test/<id>.jpg, and submission.csv must carry the bare id back (a .jpg suffix is rejected).
+<|im_end|>
+<|im_start|>assistant

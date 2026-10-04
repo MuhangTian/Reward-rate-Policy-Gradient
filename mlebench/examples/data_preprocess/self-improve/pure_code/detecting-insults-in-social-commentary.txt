@@ -1,0 +1,22 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- Datasets train.csv and test.csv are available in `${MLE_BENCH_DATA}/data/detecting-insults-in-social-commentary/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- To keep runtime and memory low, make your training efficient: train on a subsample of the training rows and/or a reduced set of features (via feature selection or sparse methods) rather than the full data, as long as accuracy stays reasonable.
+- Your task is to predict the probability (0 to 1) that a comment is an insult. Predictions are evaluated using AUC.
+- You can use pre-installed packages like `scikit-learn`, `lightGBM`, `xgboost`, `pandas`, `numpy`, `torch`, etc.
+- Your final submission should match the format of the `${MLE_BENCH_DATA}/data/detecting-insults-in-social-commentary/prepared/public/sample_submission_null.csv`, which has columns `Date,Comment,Insult`.
+- Data snippet:
+-> ${MLE_BENCH_DATA}/data/detecting-insults-in-social-commentary/prepared/public/train.csv has 3947 rows and 3 columns: [Date, Comment, Insult].
+-> ${MLE_BENCH_DATA}/data/detecting-insults-in-social-commentary/prepared/public/test.csv has 2647 rows and 2 columns: [Date, Comment].
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

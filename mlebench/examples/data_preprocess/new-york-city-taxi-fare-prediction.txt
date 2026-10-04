@@ -1,0 +1,27 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Datasets labels.csv (the TRAINING data -- note the name, there is no train.csv), test.csv and sample_submission.csv are available in `${MLE_BENCH_DATA}/data/new-york-city-taxi-fare-prediction/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict the fare_amount (US dollars) of a New York City taxi ride from its pickup datetime, pickup/dropoff coordinates and passenger count. Submissions are evaluated on the root mean squared error against the true fares.
+- You MUST train on at most 500000 rows, NOT all 55413942. Subsample immediately when you load the data, e.g. `pd.read_csv(path, nrows=500000)`. labels.csv is 5.7 GB on disk; reading it in full exhausts the machine's memory and the run is killed. 500000 rows are ample for a strong RMSE. This limit applies to TRAINING rows only -- you must still predict for every row of test.csv.
+- Do NOT train a neural network -- the machine has 1 CPU, no GPU and a ~600 s time limit. Gradient boosting or a linear model on engineered features is the right size of solution.
+- The single strongest feature is trip distance derived from the four coordinates (e.g. haversine); hour-of-day, day-of-week and year from pickup_datetime also matter, since fares rose over the 2009-2015 span.
+- The data is raw and contains outliers: fare_amount goes negative (min -83.25 in a 200000-row sample), passenger_count includes 0, and some coordinates are far outside New York. Filtering the training rows helps; do NOT filter test rows, every one needs a prediction.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format, one row per test key:
+```
+key,fare_amount
+2010-10-01 21:26:11.0000001,11.35
+2013-10-06 01:38:00.00000083,11.35
+etc.
+```
+- Data snippet:
+-> labels.csv has 55413942 rows and 8 columns: key (str, the row id, e.g. 2014-03-30 12:14:00.000000128), fare_amount (float64, the target), pickup_datetime (str, e.g. 2014-03-30 12:14:00 UTC), pickup_longitude (float64), pickup_latitude (float64), dropoff_longitude (float64), dropoff_latitude (float64), passenger_count (int64, 0-7).
+-> test.csv has 9914 rows and the same 7 columns WITHOUT fare_amount. You must predict a row for every one of them.
+-> sample_submission.csv has 9914 rows, columns key and fare_amount, and gives the required key order.
+-> In a 200000-row sample of the training data fare_amount has median 8.50 and 99th percentile 52.50, so a constant-median baseline is easy to beat.
+<|im_end|>
+<|im_start|>assistant

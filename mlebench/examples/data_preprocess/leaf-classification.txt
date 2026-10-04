@@ -1,0 +1,25 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Datasets train.csv and test.csv are available in `${MLE_BENCH_DATA}/data/leaf-classification/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- To keep runtime and memory low, make your training efficient: train on a subsample of the training rows and/or a reduced set of features (via feature selection or sparse methods) rather than the full data, as long as accuracy stays reasonable.
+- Your task is to predict probabilities for 99 plant species using pre-extracted features.
+- Submissions are evaluated using multi-class logarithmic loss.
+- You can use pre-installed packages such as: `statsmodels`, `pandas`, `timm`, `bayesian-optimization`, `scikit-learn`, `xgboost`, `numpy`, `torch`, `torchvision`, `lightGBM`, `torch-geometric`.
+- submission.csv should have the following format:
+```
+id,Acer_Capillipes,Acer_Circinatum,Acer_Mono,...
+2,0.1,0.5,0,0.2,...
+5,0,0.3,0,0.4,...
+etc.
+```
+- Data snippet:
+-> ${MLE_BENCH_DATA}/data/leaf-classification/prepared/public/train.csv has 891 rows and 194 columns.
+id (int), species (object), margin1 to margin64 (float64), shape1 to shape64 (float64), texture1 to texture64 (float64)
+-> ${MLE_BENCH_DATA}/data/leaf-classification/prepared/public/test.csv has 99 rows and 193 columns.
+id (int), margin1 to margin64 (float64), shape1 to shape64 (float64), texture1 to texture64 (float64)
+<|im_end|>
+<|im_start|>assistant

@@ -1,0 +1,44 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- The dataset is available in `${MLE_BENCH_DATA}/data/mlsp-2013-birds/prepared/public/`. There is no train.csv/test.csv; the files you need are listed below.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is multi-label bird species detection: for each 10-second audio recording, predict the probability that each of the 19 species (ids 0-18) is present. Evaluation is AUC (ROC) over all 1216 (recording, species) pairs.
+- Your program gets about 600 seconds on 1 CPU with 16 GB RAM and no GPU. MEMORY CONSTRAINT: the raw media is over 600 MB -- do NOT decode the wavs or read the bmp spectrograms; both are too slow and can exhaust memory. Use the precomputed per-recording features in `supplemental_data/histogram_of_segments.txt` rather than the raw media.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv must contain exactly the 1216 Ids of sample_submission.csv, where `Id` = rec_id * 100 + species_id and `Probability` is in [0,1]:
+```
+Id,Probability
+100,0.65
+101,0.02
+102,0.13
+etc
+```
+- The three files have irregular formats; load them EXACTLY like this (`root` = the directory above), or you get `invalid literal for int() with base 10: 'rec_id'` or `Expected 2 fields in line 2, saw 101`:
+```
+import pandas as pd
+# features: header has 2 fields, data rows have 101 -> skip it, name by hand
+X = pd.read_csv(root+"supplemental_data/histogram_of_segments.txt", header=None, skiprows=1)
+X.columns = ["rec_id"] + ["f%d" % i for i in range(X.shape[1]-1)]
+# folds: ordinary CSV with a real header -> do NOT pass header=None
+folds = pd.read_csv(root+"essential_data/CVfolds_2.txt")   # rec_id, fold (0=258 train, 1=64 test)
+# labels: ragged lines, pandas cannot read it -> parse by hand, "?" marks test
+labels = dict()
+with open(root+"essential_data/rec_labels_test_hidden.txt") as fh:
+    next(fh)
+    for line in fh:
+        p = line.strip().split(",")
+        labels[int(p[0])] = [int(x) for x in p[1:] if x != "?"]
+```
+-> X has 322 rows: 100 float features for every rec_id 0-321, train and test alike. labels maps rec_id -> list of species ids present (empty list = none).
+-> sample_submission.csv is at the TOP level, not inside essential_data/. It has 1216 rows `Id,Probability`; reuse its Id column and overwrite Probability.
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

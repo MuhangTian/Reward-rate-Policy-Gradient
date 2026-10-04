@@ -1,0 +1,29 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- Dataset (train.csv, sample_submission.csv, and the train/ and test/ image folders) is available in `${MLE_BENCH_DATA}/data/ranzcr-clip-catheter-line-classification/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict, for each test chest X-ray, the probability that each of 9 catheter/line placement labels applies. The task is evaluated with the mean of the column-wise ROC AUCs, so output probabilities, not hard 0/1 labels.
+- The labels are highly imbalanced (rarest, `ETT - Abnormal`, 0.3% positive), so a subsample may contain no positives for some label; your submission must still contain a probability column for all 9 labels.
+- Your program runs on a single CPU (NO GPU) with 16 GB RAM and is KILLED after about 600 seconds. MEMORY CONSTRAINT: the X-rays are large (2500x2000 to 3000x3000 px, 6.6 GB total) and all 27074 fit in neither time nor RAM -- train on a SUBSET of at most 3000 images, resize each to e.g. 32x32 grayscale with PIL (`from PIL import Image`) as you load it, and keep only the tiny copy. You must still predict for all 3009 test images. Do NOT train a deep CNN or use a pretrained network -- neither finishes in time on one CPU.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv must have exactly the same 10 columns as sample_submission.csv: `StudyInstanceUID` plus the 9 label columns (`ETT - Abnormal`, `ETT - Borderline`, ..., `CVC - Borderline`) in the same order. Format:
+```
+StudyInstanceUID,ETT - Abnormal,ETT - Borderline,...
+1.2.826.0.1.3680043.8.498.255...,0.05,0.12,...
+etc.
+```
+- Train data snippet (paths below are relative to the dataset directory given above):
+-> train.csv has 27074 rows, 13 columns: StudyInstanceUID (str), 11 binary label columns, PatientID (str). Its image is train/<StudyInstanceUID>.jpg.
+-> test/ has 3009 JPEGs named <StudyInstanceUID>.jpg; predict a row for each.
+-> sample_submission.csv has 3009 rows and gives the required column order. Only 9 of train.csv's 11 labels are scored: `CVC - Normal` and `Swan Ganz Catheter Present` are NOT submission columns.
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

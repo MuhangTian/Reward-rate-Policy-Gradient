@@ -1,0 +1,38 @@
+You are competing in the NanoGPT speedrun (modded-nanogpt, track_1_short): train a neural network to at most 3.28 mean cross-entropy loss on the FineWeb validation set, using 8x NVIDIA A100-SXM4-80GB GPUs, in the least possible total wall-clock time. The score is the TOTAL WALL-CLOCK SECONDS OF THE WHOLE SCRIPT PROCESS, measured by our harness from process launch to process exit. You are scored on TWO things at once and must improve BOTH: the total wall-clock seconds, AND how far the final validation loss goes below 3.28 (worth roughly 20 seconds of wall-clock per 0.001 of loss, credited down to 3.25). Reaching 3.28 is required but not sufficient -- do not stop optimising the model the moment the script crosses it. A change that trades one against the other is NOT progress and is a wasted attempt: not a speedup paid for with loss margin, and not a loss improvement paid for with time. Propose the change that moves both in the right direction together.
+
+Below is an existing solution script and the result it achieved. Study it and propose ONE change that makes the whole process finish sooner AND drives the final validation loss further below 3.28. Both must improve; a proposal that helps one at the other's expense does not count.
+
+You do NOT write code. You write a CHANGE SPECIFICATION, which a separate engineer will implement exactly as you describe it. The engineer implements ONLY what the CHANGE section says: if the CHANGE section is missing, vague, or names only a flag or a constant, that is what gets built. Your CHANGE section is your entire contribution.
+
+Hardware facts you must design for: A100 is Ampere (sm_80). It has NO FP8 tensor cores, so any FP8 code path (float8 matmuls, FP8 lm-head, FP8 scaling) is unavailable and must be avoided or replaced; bf16 and TF32 tensor cores are the fast paths. HBM2e at roughly 2 TB/s, NVLink between GPUs. FlashAttention-3 is Hopper-only and unavailable; FlashAttention-2, PyTorch SDPA, FlexAttention, Triton and torch.compile are available. torch.compile can take several minutes, and that time is part of the score, so reducing compile time, warmup, startup and per-validation cost is as legitimate a lever as making training steps faster.
+
+Constraints the script must continue to satisfy:
+- Launched with: torchrun --nproc_per_node=8 train_gpt.py. Single self-contained file; it must not read any sibling source files.
+- Training data: data/fineweb10B/fineweb_train_*.bin relative to the working directory (equivalently os.environ.get("DATA_PATH", ".") + "/data/fineweb10B/"); validation: data/fineweb10B/fineweb_val_*.bin. Do not modify the train or validation token streams. Validation loss must be the mean cross-entropy over exactly 10485760 tokens of the validation set.
+- Each .bin shard has a 256-int32 header (magic 20240520, version, token count) followed by uint16 GPT-2 tokens; shard files are 100M tokens each.
+- Validation cadence is enforced: a validation pass exactly every 125 training steps (when step % 125 == 0) and once at the final step, each printing the standard val line; the validation loss computation and its printing must stay unchanged. Violating this scores the run as a failure.
+- Print these exact log line formats to stdout: after each training step, "step:<step>/<train_steps> train_time:<ms>ms step_avg:<ms>ms" (train_time as an integer number of milliseconds, step_avg with 2 decimals); at every validation, "step:<step>/<train_steps> val_loss:<loss> train_time:<ms>ms step_avg:<ms>ms" (val_loss with 4 decimals), for example: step:1390/1390 val_loss:3.2775 train_time:79532ms step_avg:57.22ms. The printed train_time is informational only; the score is the harness-measured wall-clock seconds of the whole process.
+- torch._inductor.config.coordinate_descent_tuning is banned.
+- No network access, no downloads.
+- The whole process (startup + compilation + training + every validation + exit) is killed at a hard wall cap of 1500 seconds and scored as a failure; compilation alone can take several minutes, so leave margin.
+
+Existing solution and its result:
+
+{previous_plan_code}
+
+Result of that solution: {previous_plan_error}
+
+What counts as a change. The change must be a MECHANISM, not a setting. Not acceptable, and treated as a wasted attempt: changing torch.compile arguments (mode, dynamic, fullgraph, backend), DDP arguments, or any hyperparameter on its own (batch size, sequence length, iteration count, learning rates, warmup/cooldown lengths, momentum, Newton-Schulz iteration count, gradient-accumulation factor); deleting or moving a line; renaming; changing where the printed timer starts. Acceptable: something that changes what the program computes or how data moves, for example a Triton fused kernel (RMSNorm, rotary, cross-entropy, Newton-Schulz orthogonalization, lm-head); a different attention backend or block-mask construction for sm_80; CUDA graphs or regional/selective compilation that removes recompiles; bf16/TF32 precision changes replacing an FP8 path; DDP bucket restructuring, sharded reduce-scatter/all-gather or communication overlap; async pinned H2D loading or loader prefetch; architecture changes (attention structure, value embeddings, U-net skips, logit softcap, sliding/varlen document-aware attention, MLP variants, embedding sparsification, parameter tying); optimizer mechanics (Muon/NorMuon variants, per-parameter-group treatment, cautious weight decay); sequence packing. Hyperparameters may be co-adjusted only as part of such a mechanism, and the CHANGE section must name the mechanism. One exception: spending more of the wall-clock budget on training in order to reach a lower final loss IS a legitimate change, because the score prices both sides of that trade -- but the CHANGE section must state the trade it predicts (roughly how many extra seconds, for roughly how much lower loss). A step-count change with no stated trade is still a wasted attempt.
+
+Write your reply as exactly these three sections, in this order, and nothing else. Do not think out loud before the first section, do not restate the task or the script, and do not write out the whole file. Start immediately with the word DIAGNOSIS.
+
+DIAGNOSIS
+At most 120 words. What specifically is costing wall-clock time in the script above, and what evidence in the script or its result points at it. Be concrete about where.
+
+CHANGE
+At most 400 words. A numbered list of the exact edits: for each, the function, class, variable or line region to touch, what it should become, and exact values for any constant. New code must be described precisely enough that there is only one reasonable way to write it; short illustrative fragments are fine. Every edit must serve the ONE mechanism named in the first line of this section.
+
+RISK
+At most 60 words. What could break, and what the implementer should check to avoid it.
+
+Your reply is cut off at a hard token limit. A reply that has not reached the CHANGE section by then is worthless, so write the CHANGE section before anything long.

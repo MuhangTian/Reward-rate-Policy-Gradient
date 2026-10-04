@@ -1,0 +1,14 @@
+# Speedrun overlay, merged by speedrun/rl/main_golf.py build_config() on top
+# of ppo_trainer.yaml + golf_trainer.yaml (CLI key=value overrides still win).
+
+golf:
+  # Invalid-sample time charge (seconds) in the rr surrogate; matches the
+  # worker's process cap GOLF_WALL_SECONDS in scripts/run.sh.
+  timeout: 1500
+
+data:
+  # Prompt = rules + one parent program + feedback (parent scripts are
+  # ~8k-44k tokens).
+  max_prompt_length: 40960
+  # The policy emits a change specification, not a full program.
+  max_response_length: 5000

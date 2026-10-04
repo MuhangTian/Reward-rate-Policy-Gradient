@@ -1,0 +1,23 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Dataset (train.csv, sample_submission.csv, and the train/ and test/ image folders) is available in `${MLE_BENCH_DATA}/data/aerial-cactus-identification/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict, for each test image, the probability that it contains a cactus (`has_cactus`). The task is evaluated with AUC.
+- Your program runs on a single CPU (NO GPU) with 16 GB RAM and is KILLED after about 600 seconds of wall clock. The images are tiny 32x32 RGB JPEGs, so loading them all with PIL (`from PIL import Image`) easily fits the budget; load them efficiently (e.g. `np.asarray(Image.open(path))` in a plain loop). Do NOT train a deep CNN or use a pretrained network -- neither finishes in time on one CPU.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format (the id column keeps the `.jpg` suffix):
+```
+id,has_cactus
+09034a34de0e2015a8a28dfe18f423f6.jpg,0.98
+134f04305c795d6d202502c2ce3578f3.jpg,0.03
+etc
+```
+- Train data snippet:
+-> ${MLE_BENCH_DATA}/data/aerial-cactus-identification/prepared/public/train.csv has 14175 rows and 2 columns: id (str, image file name e.g. 2de8f189f1dce439766637e75df0ee27.jpg), has_cactus (int64, 0 or 1; 10628 ones, 3547 zeros). The training image for each id is at ${MLE_BENCH_DATA}/data/aerial-cactus-identification/prepared/public/train/<id> (14175 JPEG images, all 32x32 RGB).
+-> ${MLE_BENCH_DATA}/data/aerial-cactus-identification/prepared/public/test/ contains 3325 JPEG images (32x32 RGB) named <id>; you must predict a probability for every one of them.
+-> ${MLE_BENCH_DATA}/data/aerial-cactus-identification/prepared/public/sample_submission.csv has 3325 rows listing the test ids in the required format.
+<|im_end|>
+<|im_start|>assistant

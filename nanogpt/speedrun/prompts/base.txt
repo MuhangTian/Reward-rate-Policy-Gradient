@@ -1,0 +1,40 @@
+You are competing in the NanoGPT speedrun (modded-nanogpt, track_1_short): train a neural network to at most 3.28 mean cross-entropy loss on the FineWeb validation set, using 8x NVIDIA A100-SXM4-80GB GPUs, in the least possible total wall-clock time. The score is the TOTAL WALL-CLOCK SECONDS OF THE WHOLE SCRIPT PROCESS, measured by our harness from process launch to process exit: torch.compile time, kernel warmup, data loading, every validation pass, and everything that happens after the target is reached all count. It is NOT the printed train_time. Lower is better, but the run only counts if a printed validation loss reaches val_loss <= 3.28, and the process is killed at 1500 seconds and scored as a failure. You are scored on TWO things at once and must improve BOTH: the total wall-clock seconds, AND how far the final validation loss goes below 3.28 (worth roughly 20 seconds of wall-clock per 0.001 of loss, credited down to 3.25). Reaching 3.28 is required but not sufficient -- do not stop optimising the model the moment the script crosses it. A change that trades one against the other is NOT progress and is a wasted attempt: not a speedup paid for with loss margin, and not a loss improvement paid for with time. Propose the change that moves both in the right direction together.
+
+No previous solution is provided. Propose ONE change relative to a straightforward baseline implementation of this task that makes the whole process finish sooner AND drives the final validation loss further below 3.28. Both must improve; a proposal that helps one at the other's expense does not count.
+
+You do NOT write code. You write a CHANGE SPECIFICATION, which a separate engineer will implement exactly as you describe it. Your specification is the entire contribution: if it is vague, the implementation will be a guess, and if it is wrong the run will be slower or will fail to reach the target.
+
+Hardware facts you must design for: A100 is Ampere (sm_80). It has NO FP8 tensor cores, so any FP8 code path (float8 matmuls, FP8 lm-head, FP8 scaling) is unavailable and must be avoided or replaced; bf16 and TF32 tensor cores are the fast paths. HBM2e at roughly 2 TB/s, NVLink between GPUs. FlashAttention-3 is Hopper-only and unavailable; FlashAttention-2, PyTorch SDPA, FlexAttention, Triton and torch.compile are available. torch.compile can take several minutes, and that time is part of the score, so reducing compile time, warmup, startup and per-validation cost is as legitimate a lever as making training steps faster.
+
+Write your reply as exactly these three sections, in this order:
+
+DIAGNOSIS
+One short paragraph: what specifically is costing wall-clock time in the script above, and what evidence in the script or its result points at it. Be concrete about where.
+
+CHANGE
+Precisely what to modify. Name the functions, classes, variables and line regions to touch, state what each should become, and give exact values for any constant you want changed. Describe new code in enough detail that there is only one reasonable way to write it. If several edits are needed for one coherent change, list them all.
+
+RISK
+One or two sentences: what could break, and what the implementer should check to avoid it.
+
+Rules for the specification:
+- Propose ONE coherent change, not a list of unrelated ideas. A single well-specified change beats three vague ones.
+- The change must be substantive. A proposal whose substance is only retuning existing hyperparameters (batch size, sequence length alone, number of iterations, learning-rate constants, warmup or cooldown lengths, gradient-accumulation factor, momentum constants) is NOT acceptable and will be treated as a wasted attempt. Hyperparameters may be co-adjusted only as a necessary part of a substantive mechanism change, and the specification must name the mechanism. One exception: spending more of the wall-clock budget on training in order to reach a lower final loss IS a legitimate change, because the score prices both sides of that trade -- but the specification must state the trade it predicts (roughly how many extra seconds, for roughly how much lower loss). A step-count change with no stated trade is still a wasted attempt.
+- Draw from fundamental, A100-relevant mechanisms such as: kernel-level work (Triton fused kernels for RMSNorm, rotary, cross-entropy, Newton-Schulz orthogonalization or the lm-head; attention backend choice and tiling for sm_80; CUDA graphs); compile and startup-time reduction (fewer recompiles and dynamic shapes, regional or selective compile, cheaper warmup); precision (bf16 activations, TF32 matmuls, replacing any FP8 path); memory and communication (DDP bucket sizing and overlap, sharded reduce-scatter/all-gather, async H2D data loading, pinned memory); architecture (attention structure and heads, value embeddings, U-net style skips, logit softcapping, sliding or varlen document-aware attention, MLP variants, embedding sparsification, parameter tying); optimizer mechanics (Muon/NorMuon variants, orthogonalization iteration count, per-parameter-group treatment, cautious weight decay); data flow (sequence packing, loader prefetch). Pick one bold, well-specified, mechanistic change and state clearly why it saves wall-clock time on A100.
+- The validation cadence is fixed: validation runs exactly every 125 training steps (step % 125 == 0) and once at the final step, printing the standard val line each time. Do not change val_loss_every, do not validate more or less often, do not skip, move or remove the validation loop, and do not alter how the validation loss is computed or printed. Any such change makes the run INVALID.
+- It must preserve every constraint below; an implementation that violates one scores nothing.
+- Do not restate the script. Refer to it by name and location.
+- Do not write out the whole file. Small illustrative fragments are fine where they remove ambiguity.
+- Be brief. Your reply is cut off at a hard output-token limit, and a specification that is cut off mid-sentence cannot be implemented.
+
+Constraints the script must continue to satisfy:
+- Launched with: torchrun --nproc_per_node=8 train_gpt.py. Single self-contained file; it must not read any sibling source files.
+- Training data: data/fineweb10B/fineweb_train_*.bin relative to the working directory (equivalently os.environ.get("DATA_PATH", ".") + "/data/fineweb10B/"); validation: data/fineweb10B/fineweb_val_*.bin. Do not modify the train or validation token streams. Validation loss must be the mean cross-entropy over exactly 10485760 tokens of the validation set.
+- Each .bin shard has a 256-int32 header (magic 20240520, version, token count) followed by uint16 GPT-2 tokens; shard files are 100M tokens each.
+- Validation cadence is enforced: a validation pass exactly every 125 training steps (when step % 125 == 0) and once at the final step, each printing the standard val line; the validation loss computation and its printing must stay unchanged. Violating this scores the run as a failure.
+- Print these exact log line formats to stdout: after each training step, "step:<step>/<train_steps> train_time:<ms>ms step_avg:<ms>ms" (train_time as an integer number of milliseconds, step_avg with 2 decimals); at every validation, "step:<step>/<train_steps> val_loss:<loss> train_time:<ms>ms step_avg:<ms>ms" (val_loss with 4 decimals), for example: step:1390/1390 val_loss:3.2775 train_time:79532ms step_avg:57.22ms. The printed train_time is informational only; the score is the harness-measured wall-clock seconds of the whole process.
+- torch._inductor.config.coordinate_descent_tuning is banned; do not set any extra torch._inductor.config or torch.compile flags.
+- No network access, no downloads.
+- The whole process (startup + compilation + training + every validation + exit) is killed at a hard wall cap of 1500 seconds and scored as a failure; compilation alone can take several minutes, so leave margin.
+
+Reply with the three sections DIAGNOSIS, CHANGE and RISK, and nothing else. Do not write code blocks containing the full script.

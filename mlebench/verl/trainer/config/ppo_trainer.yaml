@@ -1,0 +1,253 @@
+data:
+  tokenizer: null
+  train_files: ~/data/rlhf/gsm8k/train.parquet
+  prompt_key: prompt
+  max_prompt_length: 512
+  max_response_length: 512
+  train_batch_size: 1024
+  return_raw_input_ids: False  # This should be set to true when the tokenizer between policy and rm differs
+  return_raw_chat: False
+  timeout: 120  # Computing reward
+
+actor_rollout_ref:
+  hybrid_engine: True
+  model:
+    path: ~/models/deepseek-llm-7b-chat
+    ref_path: ~/models/deepseek-llm-7b-chat
+    external_lib: null
+    override_config: { }
+    enable_gradient_checkpointing: False
+    use_remove_padding: False
+  actor:
+    strategy: fsdp  # This is for backward-compatibility
+    ppo_mini_batch_size: 256
+    ppo_micro_batch_size: 64
+    use_dynamic_bsz: False
+    ppo_max_token_len_per_gpu: 16384 # n * ${data.max_prompt_length} + ${data.max_response_length}
+    grad_clip: 1.0
+    clip_ratio: 0.2
+    use_reward_rate_penalty: False
+    log_reward_rate: True
+    use_log_reward_rate_penalty: False
+    reward_rate_div_avg_time: "constant"
+    # Online NIW log-time reward-rate estimator (verl/utils/reward_rate_niw.py).
+    # When on, it replaces the running-max / expected_reward_rate formulas as
+    # the scalar reward rate fed to the time penalty.
+    use_niw_reward_rate: False
+    niw_forgetting_factor: 0.3         # geometric discount lambda on the carried prior
+    # Cap on the posterior degrees of freedom (nu_n), or null for no cap
+    # (nu_n -> n/(1-niw_forgetting_factor) at steady state). A cap such as
+    # 20-30 keeps the predictive heavy-tailed. Must be > 3 (= d+1 for d=2).
+    niw_nu_cap: null
+    reward_rate_exclude_invalid: False # drop invalid-submission slots from the reward-rate estimate
+    # Which slots reward_rate_exclude_invalid keeps, in multi_step mode. False
+    # = valid at this step. True = valid at any step so far (running OR),
+    # which matches the cumulative accum_reward/accum_time the NIW estimator
+    # fits. Requires multi_step and reward_rate_exclude_invalid.
+    reward_rate_valid_thus_far: False
+    # Apply the time penalty to invalid submissions too (lifts the
+    # valid-submission mask). Pair with reward.invalid_zero_reward_full_time.
+    penalize_invalid_time: False
+    # Charge invalid submissions the running max of the reward rate seen so
+    # far instead of the current estimate, keeping their reward scale
+    # monotone. Requires penalize_invalid_time; valid samples still use the
+    # current rate.
+    invalid_penalty_use_max_rate: False
+    mean_center_time: False
+    entropy_coeff: 0.001
+    use_kl_loss: False # True for GRPO
+    kl_loss_coef: 0.001 # for grpo
+    kl_loss_type: low_var_kl # for grpo
+    ppo_epochs: 1
+    shuffle: False
+    ulysses_sequence_parallel_size: 1 # sp size
+    optim:
+      lr: 1e-6
+      lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
+      min_lr_ratio: null   # only useful for warmup with cosine
+      warmup_style: constant  # select from constant/cosine
+      total_training_steps: -1  # must be override by program
+    fsdp_config:
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      param_offload: False
+      grad_offload: False
+      optimizer_offload: False
+      fsdp_size: -1
+  ref:
+    fsdp_config:
+      param_offload: False
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      fsdp_size: -1
+    log_prob_micro_batch_size: 128
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size} # sp size
+  rollout:
+    name: vllm
+    temperature: 1.0
+    top_k: -1 # 0 for hf rollout, -1 for vllm rollout
+    top_p: 1
+    prompt_length: ${data.max_prompt_length}  # not use for opensource
+    response_length: ${data.max_response_length}
+    # for vllm rollout
+    dtype: bfloat16 # should align with FSDP
+    gpu_memory_utilization: 0.5
+    ignore_eos: False
+    enforce_eager: True
+    free_cache_engine: True
+    load_format: dummy_dtensor
+    tensor_model_parallel_size: 2
+    max_num_batched_tokens: 8192
+    max_num_seqs: 1024
+    log_prob_micro_batch_size: 128
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    # for hf rollout
+    do_sample: True
+    # number of responses (i.e. num sample times)
+    n: 1 # > 1 for grpo
+
+critic:
+  strategy: fsdp
+  optim:
+    lr: 1e-5
+    lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
+    min_lr_ratio: null   # only useful for warmup with cosine
+    warmup_style: constant  # select from constant/cosine
+    total_training_steps: -1  # must be override by program
+  model:
+    path: ~/models/deepseek-llm-7b-chat
+    override_config: { }
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    enable_gradient_checkpointing: False
+    use_remove_padding: False
+    fsdp_config:
+      param_offload: False
+      grad_offload: False
+      optimizer_offload: False
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      fsdp_size: -1
+  ppo_mini_batch_size: ${actor_rollout_ref.actor.ppo_mini_batch_size}
+  ppo_micro_batch_size: 64
+  forward_micro_batch_size: ${critic.ppo_micro_batch_size}
+  use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+  ppo_max_token_len_per_gpu: 32768 # (${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}) * 2
+  forward_max_token_len_per_gpu: ${critic.ppo_max_token_len_per_gpu}
+  ulysses_sequence_parallel_size: 1 # sp size
+  ppo_epochs: ${actor_rollout_ref.actor.ppo_epochs}
+  shuffle: ${actor_rollout_ref.actor.shuffle}
+  grad_clip: 1.0
+  cliprange_value: 0.5
+
+reward_model:
+  enable: False
+  strategy: fsdp
+  model:
+    input_tokenizer: ${actor_rollout_ref.model.path}  # set this to null if the chat template is identical
+    path: ~/models/FsfairX-LLaMA3-RM-v0.1
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    use_remove_padding: False
+    fsdp_config:
+      min_num_params: 0
+      param_offload: False
+  micro_batch_size: 64
+  max_length: null
+  ulysses_sequence_parallel_size: 1 # sp size
+  use_dynamic_bsz: ${critic.use_dynamic_bsz}
+  forward_max_token_len_per_gpu: ${critic.forward_max_token_len_per_gpu}
+
+algorithm:
+  gamma: 1.0
+  lam: 1.0
+  adv_estimator: gae
+  kl_penalty: kl  # how to estimate kl divergence
+  kl_ctrl:
+    type: fixed
+    kl_coef: 0.001
+
+reward:
+  has_submission_score: 0.1
+  valid_submission_score: 0.2
+  invalid_submission_time: 1e-6
+  # When True, every invalid submission (any failure mode, incl. timeout) is
+  # normalised to reward 0 and exec_time = the full data.timeout, instead of
+  # no_submission_penalty and its actual runtime. Pair with
+  # actor.penalize_invalid_time so the time penalty applies to them.
+  invalid_zero_reward_full_time: False
+  # Flat penalty added on top of the -timeout*reward_rate time term for every
+  # invalid submission when invalid_zero_reward_full_time is on (0.0 = none).
+  # no_submission_penalty has no effect once invalid_zero_reward_full_time is
+  # True; use this key instead.
+  invalid_reward_rate_penalty: 0.0
+  # When True (and invalid_zero_reward_full_time is on), an invalid
+  # submission's penalty time is timeout + its measured runtime, so its
+  # shaped reward is -(timeout + exec_time)*rho. Timeout failures land on
+  # -2*timeout*rho.
+  invalid_penalty_add_exec_time: False
+  no_submission_penalty: -10.0
+  no_ml_penalty: -10.0
+  env_step_score: 0.1
+  min_time: 0
+  enable_env_reward: False
+  baseline_score: null
+  buffer_size: 10
+  num_cpus_per_sample: 1
+  scalar_fn_name: "identity"
+  code_mem_limit_gb: 16
+  b_score: 0.0
+  clip_time: 0.1
+  # What the previous self-improve round shows the model as
+  # {previous_plan_code} in the next prompt: the natural-language plan text
+  # that preceded the code block ("nl_text"), or the extracted code
+  # ("pure_code"). Must match the self-improve prompt template's wording.
+  self_improve_type: "nl_text"
+  # When True, raw_reward_tensor (used for reward-rate tracking) is the
+  # grader score's percentile rank on the competition's Kaggle leaderboard
+  # (mle-bench's get_leaderboard()) instead of the raw score. Useful for
+  # competitions whose raw metric is tightly bounded or saturating.
+  use_leaderboard_score: False
+
+trainer:
+  total_epochs: null
+  total_training_steps: 300
+  project_name: verl_examples
+  experiment_name: gsm8k
+  logger: [ 'console', 'wandb' ]
+  nnodes: 1
+  n_gpus_per_node: 8
+  save_freq: -1
+  critic_warmup: 0
+  default_hdfs_dir: ~/experiments/gsm8k/ppo/${trainer.experiment_name}
+  default_local_dir: ${REPO_ROOT}/checkpoints/${trainer.project_name}/${trainer.experiment_name}
+  workspace_dir: workspace
+  multi_step: null
+  # -- Top-k self-improve buffer -----------------------------------------------
+  # When True, self-improve prompts are drawn from a persistent archive of the
+  # run's best valid solutions instead of a per-slot chain: each step, the
+  # prompts embed the code+error of the top train_batch_size valid solutions,
+  # ranked by raw reward (vanilla) or raw reward - rho * exec_time
+  # (reward-rate). Fewer nodes than batch_size -> selection cycles from the
+  # top; an empty buffer -> base prompts.
+  # Requires trainer.multi_step. See verl/trainer/ppo/topk_buffer.py.
+  use_topk_buffer: False
+  # Additive self-improvement bonus (0.0 disables). A valid sample whose raw
+  # reward strictly beats every buffered solution's raw reward gets +bonus on
+  # its token-level score. The bonus is excluded from the reward-rate
+  # estimate and from buffer nodes. Requires use_topk_buffer.
+  self_improve_bonus: 0.0
+  # Buffer capacity as a multiple of data.train_batch_size. Selection always
+  # takes the top train_batch_size nodes; extra capacity retains lower-ranked
+  # nodes (e.g. slow high-reward solutions demoted by a rising rho) and
+  # raises the self-improvement bonus threshold toward a true high-water mark.
+  topk_buffer_capacity_mult: 10
+  use_old_reward_rate: False
+  # When True, token_level_scores is divided by the batch's valid-submission
+  # rate (reward_fn_dict['valid_submission'] / batch_size) before use. When
+  # False, token_level_scores is used as-is.
+  use_submission_rate_reweighting: True

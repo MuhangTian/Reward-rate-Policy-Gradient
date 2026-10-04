@@ -1,0 +1,33 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- Dataset (train.csv, test.csv, sample_submission.csv, the jpeg/train and jpeg/test image folders and the DICOM folders train/ and test/) is available in `${MLE_BENCH_DATA}/data/siim-isic-melanoma-classification/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict, for each test image, the probability that the skin lesion is MALIGNANT melanoma. The task is evaluated with the area under the ROC curve.
+- Only 513 of the 28984 training rows are malignant (1.77%), so accuracy is useless here -- optimise ranking. Use `class_weight="balanced"` or `scale_pos_weight`, and never threshold: submit continuous probabilities.
+- Your program runs on a single CPU (NO GPU) with 16 GB RAM and is KILLED after about 600 seconds of wall clock. The photos are very large (many are 6000x4000, ~1 MB each) and do NOT fit in RAM -- read from `jpeg/` and NOT from the DICOM folders, resize as you load, e.g. `Image.open(p).convert("RGB").resize((32, 32))`, keep only the tiny copy, and subsample the training images rather than reading all 28984. Do NOT train a deep CNN or use a pretrained network -- neither finishes in time on one CPU.
+- The tabular columns alone (sex, age_approx, anatom_site_general_challenge) already give a usable AUC and cost nothing to compute, so a strong cheap baseline is those plus a few colour statistics of the downsized image.
+- WARNING -- `diagnosis` and `benign_malignant` exist in train.csv but NOT in test.csv: they encode the answer. Do NOT train on them. Only image_name, patient_id, sex, age_approx and anatom_site_general_challenge are available at test time.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format:
+```
+image_name,target
+ISIC_0052212,0.5
+ISIC_0076545,0.5
+etc.
+```
+- Data snippet:
+-> train.csv has 28984 rows and 8 columns: image_name (str, e.g. ISIC_0015719), patient_id (str, 2056 distinct patients), sex (male 14953 / female 13975, 56 missing), age_approx (float64, 0-90, 59 missing), anatom_site_general_challenge (6 values, torso 14781 / lower extremity 7334 / upper extremity 4356 / head-neck 1622, 466 missing), diagnosis (9 values, mostly "unknown"), benign_malignant, and target (int64, 513 ones).
+-> The image for each row is jpeg/train/<image_name>.jpg (and the same image as DICOM at train/<image_name>.dcm). Sizes vary widely, from about 1872x1053 up to 6000x4000.
+-> test.csv has 4142 rows and only 5 columns: image_name, patient_id, sex, age_approx, anatom_site_general_challenge. Its images are jpeg/test/<image_name>.jpg. You must predict a row for every one of them.
+-> sample_submission.csv has 4142 rows, columns image_name and target, and gives the required image_name order.
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

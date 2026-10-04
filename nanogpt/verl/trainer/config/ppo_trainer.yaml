@@ -1,0 +1,340 @@
+data:
+  tokenizer: null
+  train_files: ~/data/rlhf/gsm8k/train.parquet
+  val_files: ~/data/rlhf/gsm8k/test.parquet
+  prompt_key: prompt
+  max_prompt_length: 512
+  max_response_length: 512
+  train_batch_size: 1024
+  val_batch_size: 1312
+  return_raw_input_ids: False  # This should be set to true when the tokenizer between policy and rm differs
+  return_raw_chat: False
+  timeout: 120  # Computing reward
+
+actor_rollout_ref:
+  hybrid_engine: True
+  model:
+    path: ~/models/deepseek-llm-7b-chat
+    ref_path: ~/models/deepseek-llm-7b-chat
+    external_lib: null
+    override_config: { }
+    enable_gradient_checkpointing: False
+    use_remove_padding: False
+  actor:
+    strategy: fsdp  # This is for backward-compatibility
+    ppo_mini_batch_size: 256
+    ppo_micro_batch_size: 64
+    use_dynamic_bsz: False
+    ppo_max_token_len_per_gpu: 16384 # n * ${data.max_prompt_length} + ${data.max_response_length}
+    grad_clip: 1.0
+    clip_ratio: 0.2
+    use_reward_rate_penalty: False
+    log_reward_rate: True
+    use_log_reward_rate_penalty: False
+    reward_rate_div_avg_time: "constant"
+    # Online NIW log-time reward-rate estimator (verl/utils/reward_rate_niw.py).
+    # When on, the time penalty uses the 95th percentile of its
+    # posterior-predictive batch rates instead of the running max.
+    use_niw_reward_rate: False
+    niw_forgetting_factor: 0.3         # geometric discount lambda on the carried prior
+    # Cap on the posterior degrees of freedom (nu_n), or null for no cap
+    # (nu_n -> n/(1-niw_forgetting_factor) at steady state). A cap such as
+    # 20-30 keeps the predictive heavy-tailed. Must be > 3 (= d+1 for d=2).
+    niw_nu_cap: null
+    reward_rate_exclude_invalid: False # drop invalid-submission slots from the reward-rate estimate
+    # Which slots reward_rate_exclude_invalid keeps, in multi_step mode. False
+    # = valid at this step. True = valid at any step so far (running OR),
+    # which matches the cumulative accum_reward/accum_time the NIW estimator
+    # fits. Requires multi_step and reward_rate_exclude_invalid.
+    reward_rate_valid_thus_far: False
+    # Pooled ("global") reward rate: sum of rewards over every valid submission
+    # seen so far, divided by the sum of those submissions' execution time.
+    # Unlike expected_reward_rate, only time that produced a valid submission
+    # is counted in the denominator.
+    # Overrides use_niw_reward_rate / expected_reward_rate / the running max
+    # when set; enabling it together with use_niw_reward_rate is rejected.
+    global_valid_reward_rate: False
+    # Per-slot hybrid objective: every slot starts under the vanilla rule (no
+    # time terms) and permanently switches to reward-rate shaping the step
+    # after it first produces a valid submission. Only the applied penalty is
+    # gated; the reward-rate estimator is fed as usual. Anchor state is per
+    # dataset slot and checkpointed in niw_state.pt.
+    # Requires trainer.multi_step and use_reward_rate_penalty.
+    hybrid_reward_rate: False
+    # Apply the time penalty to invalid submissions too (lifts the
+    # valid-submission mask). Pair with reward.invalid_zero_reward_full_time.
+    penalize_invalid_time: False
+    # Charge invalid submissions the running max of the reward rate seen so
+    # far instead of the current estimate, keeping their reward scale
+    # monotone. Requires penalize_invalid_time; valid samples still use the
+    # current rate.
+    invalid_penalty_use_max_rate: False
+    # Risk-seeking exponential tilt on the shaped reward (applied after the
+    # reward-rate surrogate): r'_i = exp(beta*s_i) / batch_mean(exp(beta*s_j))
+    # = B * softmax(beta*s)_i. Batch mean of r' is 1; the batch max is
+    # up-weighted exponentially. 0.0 disables. Requires use_reward_rate_penalty.
+    risk_seeking_beta: 0.0
+    # Adaptive risk-seeking: same tilt as risk_seeking_beta (one softmax over
+    # the whole batch, invalid rows included), but beta is solved per batch by
+    # bisection so the ess fraction 1/(B * sum softmax(beta*s)^2) equals this
+    # target. ess(beta) is strictly decreasing from 1 to (#tied maxima)/B;
+    # targets below that floor clamp at beta_max.
+    # Takes precedence over risk_seeking_beta when > 0. 0.0 disables.
+    risk_seeking_ess_target: 0.0
+    # Valid-row adaptive risk-seeking. Same tilt and invalid handling as
+    # risk_seeking_ess_target + risk_seeking_invalid_replace, but beta is
+    # solved so the ess fraction over the valid rows alone hits this target.
+    # Solved on standardized valid shaped rewards, so beta is in sigma units
+    # (train/risk_seeking/beta_raw reports it on the raw scale). Valid rows
+    # receive n_valid * softmax(beta*z), i.e. mean 1 over the valid rows.
+    # Takes precedence over risk_seeking_ess_target and risk_seeking_beta
+    # when > 0. 0.0 disables.
+    risk_seeking_ess_valid_target: 0.0
+    # Leave-one-out entropic advantage. beta is solved for this ess target over
+    # the valid rows as in risk_seeking_ess_valid_target, but the exponent is
+    # on the raw shaped reward centered at the valid max, and the normalizer
+    # is leave-one-out:
+    #   w_n = exp(beta*(s_n - s_max)) / (mean_{m!=n} exp(beta*(s_m - s_max))
+    #         + risk_seeking_loo_eps)
+    # No baseline is subtracted; GAE's learned critic supplies it.
+    # Takes precedence over risk_seeking_ess_valid_target,
+    # risk_seeking_ess_target and risk_seeking_beta when > 0. 0.0 disables.
+    risk_seeking_ess_loo_target: 0.0
+    # Denominator floor for the leave-one-out weight (bounds it by 1/eps - 1).
+    risk_seeking_loo_eps: 1.0e-6
+    # Minimum valid rows for the valid-row adaptive solves; below it the valid
+    # rows get flat weights. The leave-one-out path uses max(2, this).
+    risk_seeking_min_valid: 4
+    # risk_seeking_invalid_replace is not declared here; pass it with hydra's
+    # "+" append syntax.
+    # Upper bound for the bisection. Raw shaped-reward scale under
+    # risk_seeking_ess_target; sigma units under risk_seeking_ess_valid_target.
+    risk_seeking_beta_max: 100.0
+    # LoRA on the FSDP actor (peft). 0 = off. >0 wraps the loaded model in a
+    # PeftModel before the FSDP wrap (which then uses use_orig_params=True),
+    # trains only adapter params, and checkpoints save the adapter only.
+    # Weight sync into vLLM merges the adapter into the base weights for the
+    # duration of the sync.
+    lora_rank: 0
+    checkpoint_save_optimizer: False  # also save optimizer state (needed for exact resume)
+    lora_alpha: 32
+    lora_dropout: 0.0
+    # null -> "all-linear" (peft targets every linear layer for the arch).
+    # Otherwise a list of module names, e.g. [q_proj, v_proj].
+    lora_target_modules: null
+    mean_center_time: False
+    entropy_coeff: 0.001
+    # lm_head logits only for the response window in dp_actor (long-context
+    # memory; requires the model class to accept logits_to_keep)
+    logits_to_keep_response_only: False
+    use_kl_loss: False # True for GRPO
+    kl_loss_coef: 0.001 # for grpo
+    kl_loss_type: low_var_kl # for grpo
+    ppo_epochs: 1
+    shuffle: False
+    ulysses_sequence_parallel_size: 1 # sp size
+    optim:
+      lr: 1e-6
+      lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
+      min_lr_ratio: null   # only useful for warmup with cosine
+      warmup_style: constant  # select from constant/cosine
+      total_training_steps: -1  # must be override by program
+    fsdp_config:
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      param_offload: False
+      grad_offload: False
+      optimizer_offload: False
+      fsdp_size: -1
+  ref:
+    fsdp_config:
+      param_offload: False
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      fsdp_size: -1
+    log_prob_micro_batch_size: 128
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    # the ref builds its own DataParallelPPOActor from this section, so the
+    # response-window logits cap is mirrored here
+    logits_to_keep_response_only: ${actor_rollout_ref.actor.logits_to_keep_response_only}
+    ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size} # sp size
+  rollout:
+    name: vllm
+    temperature: 1.0
+    top_k: -1 # 0 for hf rollout, -1 for vllm rollout
+    top_p: 1
+    prompt_length: ${data.max_prompt_length}  # not use for opensource
+    response_length: ${data.max_response_length}
+    # for vllm rollout
+    dtype: bfloat16 # should align with FSDP
+    gpu_memory_utilization: 0.5
+    ignore_eos: False
+    enforce_eager: True
+    free_cache_engine: True
+    load_format: dummy_dtensor
+    tensor_model_parallel_size: 2
+    max_num_batched_tokens: 8192
+    max_num_seqs: 1024
+    log_prob_micro_batch_size: 128
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    # for hf rollout
+    do_sample: True
+    # number of responses (i.e. num sample times)
+    n: 1 # > 1 for grpo
+
+critic:
+  strategy: fsdp
+  checkpoint_save_optimizer: False  # also save optimizer state (needed for exact resume)
+  optim:
+    lr: 1e-5
+    lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
+    min_lr_ratio: null   # only useful for warmup with cosine
+    warmup_style: constant  # select from constant/cosine
+    total_training_steps: -1  # must be override by program
+  model:
+    path: ~/models/deepseek-llm-7b-chat
+    override_config: { }
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    enable_gradient_checkpointing: False
+    use_remove_padding: False
+    fsdp_config:
+      param_offload: False
+      grad_offload: False
+      optimizer_offload: False
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      fsdp_size: -1
+  ppo_mini_batch_size: ${actor_rollout_ref.actor.ppo_mini_batch_size}
+  ppo_micro_batch_size: 64
+  forward_micro_batch_size: ${critic.ppo_micro_batch_size}
+  use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+  ppo_max_token_len_per_gpu: 32768 # (${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}) * 2
+  forward_max_token_len_per_gpu: ${critic.ppo_max_token_len_per_gpu}
+  ulysses_sequence_parallel_size: 1 # sp size
+  ppo_epochs: ${actor_rollout_ref.actor.ppo_epochs}
+  shuffle: ${actor_rollout_ref.actor.shuffle}
+  grad_clip: 1.0
+  cliprange_value: 0.5
+
+reward_model:
+  enable: False
+  strategy: fsdp
+  model:
+    input_tokenizer: ${actor_rollout_ref.model.path}  # set this to null if the chat template is identical
+    path: ~/models/FsfairX-LLaMA3-RM-v0.1
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    use_remove_padding: False
+    fsdp_config:
+      min_num_params: 0
+      param_offload: False
+  micro_batch_size: 64
+  max_length: null
+  ulysses_sequence_parallel_size: 1 # sp size
+  use_dynamic_bsz: ${critic.use_dynamic_bsz}
+  forward_max_token_len_per_gpu: ${critic.forward_max_token_len_per_gpu}
+
+algorithm:
+  gamma: 1.0
+  lam: 1.0
+  adv_estimator: gae
+  kl_penalty: kl  # how to estimate kl divergence
+  kl_ctrl:
+    type: fixed
+    kl_coef: 0.001
+
+reward:
+  has_submission_score: 0.1
+  valid_submission_score: 0.2
+  invalid_submission_time: 1e-6
+  # When True, every invalid submission (any failure mode, incl. timeout) is
+  # normalised to reward 0 and exec_time = the full data.timeout, instead of
+  # no_submission_penalty and its actual runtime. Pair with
+  # actor.penalize_invalid_time so the time penalty applies to them.
+  invalid_zero_reward_full_time: False
+  # Flat penalty added on top of the -timeout*reward_rate time term for every
+  # invalid submission when invalid_zero_reward_full_time is on (0.0 = none).
+  # no_submission_penalty has no effect once invalid_zero_reward_full_time is
+  # True; use this key instead.
+  invalid_reward_rate_penalty: 0.0
+  # When True (and invalid_zero_reward_full_time is on), an invalid
+  # submission's penalty time is timeout + its measured runtime, so its
+  # shaped reward is -(timeout + exec_time)*rho. Timeout failures land on
+  # -2*timeout*rho.
+  invalid_penalty_add_exec_time: False
+  no_submission_penalty: -10.0
+  no_ml_penalty: -10.0
+  env_step_score: 0.1
+  min_time: 0
+  enable_env_reward: False
+  baseline_score: null
+  buffer_size: 10
+  num_cpus_per_sample: 1
+  scalar_fn_name: "identity"
+  code_mem_limit_gb: 16
+  b_score: 0.0
+  clip_time: 0.1
+  # What the previous self-improve round shows the model as
+  # {previous_plan_code} in the next prompt: the natural-language plan text
+  # that preceded the code block ("nl_text"), or the extracted code
+  # ("pure_code"). Must match the self-improve prompt template's wording.
+  self_improve_type: "nl_text"
+  # When True, raw_reward_tensor (used for reward-rate tracking) is the
+  # grader score's percentile rank on the competition's Kaggle leaderboard
+  # (mle-bench's get_leaderboard()) instead of the raw score. Useful for
+  # competitions whose raw metric is tightly bounded or saturating.
+  use_leaderboard_score: False
+
+trainer:
+  total_epochs: null
+  total_training_steps: 300
+  project_name: verl_examples
+  experiment_name: gsm8k
+  logger: [ 'console', 'wandb' ]
+  nnodes: 1
+  n_gpus_per_node: 8
+  save_freq: -1
+  test_freq: -1
+  critic_warmup: 0
+  default_hdfs_dir: ~/experiments/gsm8k/ppo/${trainer.experiment_name}
+  default_local_dir: ${REPO_ROOT}/checkpoints/${trainer.project_name}/${trainer.experiment_name}
+  workspace_dir: workspace
+  multi_step: null
+  use_old_reward_rate: False
+  # When True, token_level_scores is divided by the batch's valid-submission
+  # rate (reward_fn_dict['valid_submission'] / batch_size) before use. When
+  # False, token_level_scores is used as-is.
+  use_submission_rate_reweighting: True
+  # Staged objective switch. When set to a float in (0, 1], the run starts
+  # under the vanilla objective and latches to reward-rate permanently once
+  # batch validity (train/valid_submission_perc) exceeds this threshold for
+  # rr_switch_valid_consecutive consecutive steps; reward-rate begins the
+  # following step. Null disables staging. The latch is persisted to
+  # actor/rr_switch_state.json so it survives a resume.
+  # Requires actor.use_reward_rate_penalty=True.
+  rr_switch_valid_threshold: null
+  # Consecutive steps above rr_switch_valid_threshold required to latch. 1
+  # (default) switches on the first qualifying batch; higher values guard
+  # against a single lucky batch.
+  rr_switch_valid_consecutive: 1
+  # Where to copy the full checkpoint at the switch (null = don't). The
+  # snapshot lands in <dir>/<experiment_name>_step<N>/ and is a complete warm
+  # start (actor and critic weights + optimizers, global step, prompt chain).
+  # It is written before the latch flips, and max_reward_rate.txt /
+  # niw_state.pt are stripped, so a run resumed from it estimates rho from
+  # its own rollouts.
+  rr_switch_snapshot_dir: null
+  # Per-slot rejection sampling: keep resampling the slots whose rollout did
+  # not produce a valid submission until every row in the batch is valid.
+  # This keeps large invalid-sample penalties from dominating the batch
+  # variance. Row i is always regenerated from row i's own prompt, so the
+  # self-improve chain stays matched; rejected draws are discarded.
+  rejection_sample_all_valid: False
+  # Cap on generate+execute rounds per step. Slots still invalid after the
+  # last round keep their final attempt (train/rejection/unfilled_slots
+  # reports how many). Each round regenerates only the pending slots.
+  rejection_sample_max_rounds: 4

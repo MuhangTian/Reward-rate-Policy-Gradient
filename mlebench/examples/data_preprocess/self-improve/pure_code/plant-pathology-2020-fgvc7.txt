@@ -1,0 +1,30 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- Dataset (train.csv, test.csv, sample_submission.csv and the images/ folder) is available in `${MLE_BENCH_DATA}/data/plant-pathology-2020-fgvc7/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict, for each test leaf photo, the probability of each of 4 mutually exclusive labels: healthy, multiple_diseases, rust, scab. The task is evaluated with the mean of the column-wise ROC AUCs, and each row's 4 probabilities must sum to one.
+- Your program runs on a single CPU (NO GPU) with 16 GB RAM and is KILLED after about 600 seconds of wall clock. MEMORY CONSTRAINT: the photos are large (2048x1365 RGB, 1821 files) and do NOT fit in RAM at full size -- resize each one as you load it, e.g. `Image.open(p).convert("RGB").resize((32, 32))` (PIL comes with torchvision), keep only the tiny copy, and never hold full-size images in a list. Do NOT train a deep CNN or use a pretrained network -- neither finishes in time on one CPU.
+- `multiple_diseases` is rare (85 of 1638 training rows); your submission must still contain a probability column for it.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format:
+```
+image_id,healthy,multiple_diseases,rust,scab
+Test_0,0.25,0.25,0.25,0.25
+Test_1,0.25,0.25,0.25,0.25
+etc
+```
+- Train data snippet:
+-> ${MLE_BENCH_DATA}/data/plant-pathology-2020-fgvc7/prepared/public/train.csv has 1638 rows and 5 columns: image_id (str, e.g. Train_0) and the 4 binary (0/1) label columns healthy (468 positives), multiple_diseases (85), rust (551), scab (534); exactly one of them is 1 in every row. The image for each id is images/<image_id>.jpg.
+-> test.csv has 183 rows and 1 column, image_id (e.g. Test_0); its image is images/<image_id>.jpg. You must predict a row for every one of them.
+-> sample_submission.csv has 183 rows and gives the required column order.
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

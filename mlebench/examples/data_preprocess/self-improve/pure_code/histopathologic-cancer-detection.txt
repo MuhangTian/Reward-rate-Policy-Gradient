@@ -1,0 +1,31 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- Dataset (train_labels.csv, sample_submission.csv and the train/ and test/ image folders) is available in `${MLE_BENCH_DATA}/data/histopathologic-cancer-detection/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict, for each test image patch, the probability that the CENTER 32x32 pixel region contains at least one pixel of tumour tissue. The task is evaluated with the area under the ROC curve.
+- Your program runs on a single CPU (NO GPU) with 16 GB RAM and is KILLED after about 600 seconds of wall clock. There are 174464 training and 45561 test patches (~4.9 GB of TIFFs), so you CANNOT read them all -- subsample the training images (e.g. 8000-20000 of them) and read each one once, keeping only cheap features. You must still predict for all 45561 test patches, so keep the per-image cost low.
+- The label depends only on the centre 32x32 crop, so crop with `img.crop((32, 32, 64, 64))` before featurising -- the outer ring is context and adds noise. Cheap colour/texture summaries (per-channel mean, std, histogram quantiles of the centre crop) fed to logistic regression or gradient boosting fit the budget. Do NOT train a deep CNN and do NOT use a pretrained network -- neither finishes in time on one CPU.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format:
+```
+id,label
+acfe80838488fae3c89bd21ade75be5c34e66be7,0.5
+a1991e73a9b676faddd2bd47c39754b14d1eb923,0.5
+etc.
+```
+- Data snippet:
+-> train_labels.csv has 174464 rows and 2 columns: id (str, a 40-character hex name, e.g. f38a6374c348f90b587e046aac6079959adf3835) and label (int64, 0 or 1). 70586 of the rows are positive (40.5%), so the classes are only mildly imbalanced.
+-> The image for each id is train/<id>.tif. Every patch is 96x96 RGB, about 27 KB on disk.
+-> test/ has 45561 .tif patches of the same 96x96 RGB format, named test/<id>.tif. You must predict a row for every one of them.
+-> sample_submission.csv has 45561 rows, columns id and label, and gives the required id order.
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

@@ -1,0 +1,24 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Dataset (sample_submission.csv and the train/ and test/ image folders) is available in `${MLE_BENCH_DATA}/data/dogs-vs-cats-redux-kernels-edition/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict, for each test image, the probability that the image is a DOG (1 = dog, 0 = cat). The task is evaluated with binary log loss.
+- Clip predictions away from exact 0 and 1 (e.g. `np.clip(p, 1e-6, 1 - 1e-6)`), otherwise a single confident mistake gives infinite log loss.
+- Your program runs on a single CPU (NO GPU) with 16 GB RAM and is KILLED after about 600 seconds of wall clock. The 22500 training JPEGs total over 1 GB, so do not hold full-size images in memory. MEMORY CONSTRAINT: resize every image to a tiny resolution (e.g. 32x32) with PIL (`from PIL import Image`) the moment you load it and keep only the tiny copy, and train on a SUBSET of the training images if loading is too slow or memory gets tight. Do NOT train a deep CNN or use a pretrained network -- neither finishes in time on one CPU.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv must have exactly the two columns of sample_submission.csv: `id` (the numeric test image id) and `label` (probability the image is a dog). Format:
+```
+id,label
+1,0.98
+2,0.03
+etc.
+```
+- Train data snippet:
+-> ${MLE_BENCH_DATA}/data/dogs-vs-cats-redux-kernels-edition/prepared/public/train/ contains 22500 JPEG images of varying sizes (up to ~500px) named cat.<N>.jpg (11242 images) or dog.<N>.jpg (11258 images); the label of each training image comes from its filename prefix.
+-> ${MLE_BENCH_DATA}/data/dogs-vs-cats-redux-kernels-edition/prepared/public/test/ contains 2500 JPEG images named <id>.jpg; you must predict a dog probability for every one of them.
+-> ${MLE_BENCH_DATA}/data/dogs-vs-cats-redux-kernels-edition/prepared/public/sample_submission.csv has 2500 rows listing the test ids in the required format.
+<|im_end|>
+<|im_start|>assistant

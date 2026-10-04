@@ -1,0 +1,34 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- Datasets train.csv and test.csv are available in `${MLE_BENCH_DATA}/data/tabular-playground-series-dec-2021/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- To keep runtime and memory low, make your training efficient: subsample the training rows (see the hard row limit below) and, where it helps, use a reduced set of features via feature selection or sparse methods.
+- Achieve the best multi-class classification accuracy on the test split.
+- MEMORY CONSTRAINT: you MUST train on at most 200000 rows, NOT all 3,600,000 -- train.csv is only 0.5 GB on disk but several GB once loaded, and training on the full data exhausts the machine's memory and the run is killed. Subsample immediately when you load the data, e.g. `pd.read_csv(path, nrows=200000)` or `pd.read_csv(path).sample(n=200000, random_state=0)`. 200000 rows is ample for a strong accuracy. This limit applies to TRAINING rows only -- you must still predict for every row of test.csv.
+- You can use pre-installed packages such as: `statsmodels`, `pandas`, `timm`, `bayesian-optimization`, `scikit-learn`, `xgboost`, `numpy`, `torch`, `torchvision`, `lightGBM`, `torch-geometric`.
+- You can't access the internet so don't use any pre-trained models need downloading.
+- submission.csv should have the following format:
+```
+Id,Cover_Type
+4000000,2
+4000001,1
+etc.
+```
+- Data snippet:
+-> ${MLE_BENCH_DATA}/data/tabular-playground-series-dec-2021/prepared/public/train.csv has 3,600,000 rows and 56 columns.
+Columns include:
+- Id (int) is the unique identifier for each row
+- Elevation (float), Aspect (float), Slope (float), Horizontal_Distance_To_Hydrology (float), Vertical_Distance_To_Hydrology (float), Horizontal_Distance_To_Roadways (float), Hillshade_9am (float),  Hillshade_Noon (float), Hillshade_3pm (float), Horizontal_Distance_To_Fire_Points (float) are continuous variables
+- Cover_Type (int) is the target variable with 7 classes
+- The rest of the columns are binary variables
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

@@ -1,0 +1,28 @@
+# The 22 MLE-bench Lite competitions of the paper, and the only two settings
+# that differ between them in the logged configurations of the 132 runs:
+#   timeout_s              wall-clock limit for one executed script (data.timeout)
+#   use_leaderboard_score  train on the leaderboard percentile instead of the raw
+#                          metric (the 7 lower-is-better competitions)
+# competition_id	timeout_s	use_leaderboard_score
+aerial-cactus-identification	600	False
+aptos2019-blindness-detection	600	False
+denoising-dirty-documents	600	True
+detecting-insults-in-social-commentary	600	False
+dog-breed-identification	600	True
+dogs-vs-cats-redux-kernels-edition	600	True
+histopathologic-cancer-detection	600	False
+jigsaw-toxic-comment-classification-challenge	600	False
+leaf-classification	600	True
+mlsp-2013-birds	600	False
+new-york-city-taxi-fare-prediction	600	True
+nomad2018-predict-transparent-conductors	1200	True
+plant-pathology-2020-fgvc7	600	False
+random-acts-of-pizza	1200	False
+ranzcr-clip-catheter-line-classification	600	False
+siim-isic-melanoma-classification	600	False
+spooky-author-identification	600	True
+tabular-playground-series-dec-2021	1200	False
+tabular-playground-series-may-2022	1200	False
+text-normalization-challenge-english-language	600	False
+text-normalization-challenge-russian-language	600	False
+the-icml-2013-whale-challenge-right-whale-redux	600	False

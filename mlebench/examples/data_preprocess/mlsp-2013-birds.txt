@@ -1,0 +1,49 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- The dataset is available in `${MLE_BENCH_DATA}/data/mlsp-2013-birds/prepared/public/`. There is no train.csv/test.csv; the files you need are listed below.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is multi-label bird species detection: for each 10-second audio recording, predict the probability that each of the 19 species (ids 0-18) is present. Evaluation is AUC (ROC) over all 1216 (recording, species) pairs.
+- Your program gets about 600 seconds on 1 CPU with 16 GB RAM and no GPU. MEMORY CONSTRAINT: the raw media is over 600 MB -- do NOT decode the wavs or read the bmp spectrograms; both are too slow and can exhaust memory. Use the precomputed per-recording features in `supplemental_data/histogram_of_segments.txt` rather than the raw media.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv must contain exactly the 1216 Ids of sample_submission.csv, where `Id` = rec_id * 100 + species_id and `Probability` is in [0,1]:
+```
+Id,Probability
+100,0.65
+101,0.02
+102,0.13
+etc
+```
+- LOAD THE THREE FILES EXACTLY AS SHOWN BELOW. Their formats are irregular and every obvious guess fails: reading a header row as data gives `invalid literal for int() with base 10: 'rec_id'`, and a plain `pd.read_csv` on the feature file gives `Error tokenizing data. C error: Expected 2 fields in line 2, saw 101`. Copy this loader verbatim, substituting the directory above:
+```
+import pandas as pd
+
+# 1. FEATURES. The header line has 2 comma-separated fields but every data row
+#    has 101, so the header must be SKIPPED and names supplied by hand.
+X = pd.read_csv(root + "supplemental_data/histogram_of_segments.txt",
+                header=None, skiprows=1)
+X.columns = ["rec_id"] + ["f%d" % i for i in range(X.shape[1] - 1)]
+
+# 2. FOLDS. An ordinary 2-column CSV that DOES have a usable header row, so
+#    read it with the default settings -- do NOT pass header=None here.
+folds = pd.read_csv(root + "essential_data/CVfolds_2.txt")   # rec_id, fold
+
+# 3. LABELS. Ragged: each line has a different number of fields, so pandas
+#    cannot read it at all. Parse it by hand and skip the header line.
+labels = dict()
+with open(root + "essential_data/rec_labels_test_hidden.txt") as fh:
+    next(fh)                      # discard the 'rec_id,[labels]' header
+    for line in fh:
+        parts = line.strip().split(",")
+        labels[int(parts[0])] = [int(p) for p in parts[1:] if p != "?"]
+```
+- Train data snippet:
+-> Paths below are relative to that directory. essential_data/CVfolds_2.txt has header `rec_id,fold` and 322 rows: fold 0 = 258 train recordings, fold 1 = 64 test.
+-> essential_data/rec_labels_test_hidden.txt has header `rec_id,[labels]` and 322 variable-length lines. `0,11,12` means rec_id 0 has species 11 and 12; a line with no comma (e.g. `3`) means none; a test line is `1,?`.
+-> supplemental_data/histogram_of_segments.txt has 322 rows `rec_id,f0,...,f99` -- 100 float features for every rec_id 0-321, train and test alike. Its header line has only 2 comma-separated fields while every data row has 101, so `pd.read_csv(path, header=None)` raises a ParserError; skip that first line instead.
+-> sample_submission.csv sits at the top level of the dataset directory, NOT inside essential_data/. It has 1216 rows `Id,Probability`; reuse its Id column and overwrite Probability.
+-> Optional extras: essential_data/species_list.txt, essential_data/src_wavs/, supplemental_data/segment_features.txt, and the bmp folders under supplemental_data/.
+<|im_end|>
+<|im_start|>assistant

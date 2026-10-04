@@ -1,0 +1,24 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- The dataset is available in `${MLE_BENCH_DATA}/data/the-icml-2013-whale-challenge-right-whale-redux/prepared/public/`. The audio lives inside train2.zip and test2.zip; there is no train.csv/test.csv.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is binary detection of North Atlantic right whale upcalls: predict the probability that each 2-second test clip contains an upcall. Evaluation is AUC (ROC).
+- Read the clips out of the zips -- do NOT extract 47841 files (`aifc` is a standard-library module -- `import aifc`, there is no `scipy.io.aifc`): `import zipfile, aifc, io; z = zipfile.ZipFile(path); a = aifc.open(io.BytesIO(z.read(name)))`, then `np.frombuffer(a.readframes(a.getnframes()), dtype='>i2')`.
+- Your program gets about 600 seconds on 1 CPU with 16 GB RAM and no GPU. If your features are expensive, train on at most 8000 clips, but always predict for all 25149 test clips.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayes_opt`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv must contain exactly the 25149 clips of sampleSubmission.csv, `probability` in [0,1]:
+```
+clip,probability
+20090330_000000_015s2ms_Test0.aif,0.65
+etc
+```
+- Train data snippet:
+-> train2.zip holds 22692 names like `train2/20090328_000000_002s3ms_TRAIN0_0.aif`; the label is the single digit between the last `_` and `.aif` -- for that name it is the final 0, NOT the 0 inside `TRAIN0`; 1 = upcall, 2266 are positive.
+-> test2.zip holds 25149 names like `test2/20090330_000000_015s2ms_Test0.aif`; the submission `clip` is that name without the `test2/` prefix.
+-> Clips are mono AIFF at 2000 Hz; most have 4000 frames (2.0 s), ~11% fewer (min 539), so pad or truncate to a fixed length.
+-> sampleSubmission.csv sits at the top level of the dataset directory above. It has 25149 rows `clip,probability`; reuse its clip column and overwrite probability.
+<|im_end|>
+<|im_start|>assistant

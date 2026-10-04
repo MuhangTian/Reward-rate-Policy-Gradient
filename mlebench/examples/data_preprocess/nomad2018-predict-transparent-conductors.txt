@@ -1,0 +1,25 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Datasets **train.csv**, **test.csv**, **train/**, **test/** are available in `${MLE_BENCH_DATA}/data/nomad2018-predict-transparent-conductors/prepared/public/`.
+- You **MUST** produce a submission file at `./submission.csv` by running your model on the test split.
+- To keep runtime and memory low, make your training efficient: train on a subsample of the training rows and/or a reduced set of features (via feature selection or sparse methods) rather than the full data, as long as accuracy stays reasonable.
+- Your task is to predict the **formation energy** and **bandgap energy** for the materials in the test set.
+- Submissions are evaluated on the **mean of the RMSLE** over the two properties.
+- You can use pre-installed packages such as: `statsmodels`, `pandas`, `timm`, `bayesian-optimization`, `scikit-learn`, `xgboost`, `numpy`, `torch`, `torchvision`, `lightGBM`, `torch-geometric`.
+- **submission.csv** should have the following format:
+```
+id,formation_energy_ev_natom,bandgap_energy_ev
+1,0.1779,1.8892
+2,0.1779,1.8892
+etc.
+```
+
+- **Train data snippet:**
+  - `${MLE_BENCH_DATA}/data/nomad2018-predict-transparent-conductors/prepared/public/train.csv` has **2160 rows** and **14 columns**.
+  - Columns: `id (int)`, `spacegroup (int)`, `number_of_total_atoms (int)`, `percent_atom_al (float)`, `percent_atom_ga (float)`, `percent_atom_in (float)`, `lattice_vector_1_ang (float)`, `lattice_vector_2_ang (float)`, `lattice_vector_3_ang (float)`, `lattice_angle_alpha_degree (float)`, `lattice_angle_beta_degree (float)`, `lattice_angle_gamma_degree (float)`, `formation_energy_ev_natom (float)`, `bandgap_energy_ev (float)`
+
+<|im_end|>
+<|im_start|>assistant

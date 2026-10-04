@@ -1,0 +1,23 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Datasets ru_train.csv.zip, ru_test_2.csv.zip and ru_sample_submission_2.csv.zip are available in `${MLE_BENCH_DATA}/data/text-normalization-challenge-russian-language/prepared/public/`. They are ZIP-compressed CSVs -- pandas reads them directly, e.g. `pd.read_csv(path_to_zip)`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is Russian text normalization: for each token, convert the written form `before` into the spoken form `after` (e.g. "1862" -> "тысяча восемьсот шестьдесят второй"). The task is evaluated with per-token accuracy.
+- The machine is CPU-only (1 CPU) with 16 GB RAM and a ~600 second wall-clock limit. About 88% of tokens are unchanged (after == before). Do NOT train a neural network. Pandas reads the Cyrillic text with its default utf-8 handling -- no special flags needed.
+- MEMORY CONSTRAINT: you MUST train on at most 2000000 rows, NOT all 9515325. Subsample immediately when you load the data, e.g. `pd.read_csv(path, nrows=2000000)`. Loading everything exhausts the machine's memory and the run is killed. This limit applies to TRAINING rows only -- you must still predict for every row of the test set.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv must match the sample submission exactly: one row per test token, id = "<sentence_id>_<token_id>", format:
+```
+id,after
+0_0,Теперь
+0_1,все
+etc
+```
+- Train data snippet:
+-> ${MLE_BENCH_DATA}/data/text-normalization-challenge-russian-language/prepared/public/ru_train.csv.zip has 9515325 rows and 5 columns: sentence_id (int64), token_id (int64), class (string, token type e.g. PLAIN, PUNCT, DATE), before (string, written form), after (string, spoken form).
+-> ${MLE_BENCH_DATA}/data/text-normalization-challenge-russian-language/prepared/public/ru_test_2.csv.zip has 1059191 rows and 3 columns: sentence_id, token_id, before.
+<|im_end|>
+<|im_start|>assistant

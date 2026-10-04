@@ -1,0 +1,32 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+You have implemented a previous solution. Revise the solution to improve the performance on the test set. First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. If you reuse parts of the example code, include those sections again in your final solution. Note:
+
+- Datasets en_train.csv.zip, en_test_2.csv.zip and en_sample_submission_2.csv.zip are available in `${MLE_BENCH_DATA}/data/text-normalization-challenge-english-language/prepared/public/`. They are ZIP-compressed CSVs; pandas reads them directly, e.g. `pd.read_csv('.../en_train.csv.zip')`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is English text normalization: for each token, predict its spoken form `after` from its written form `before`, e.g. "12:47" -> "twelve forty seven". Evaluated with per-token prediction accuracy (exact string match).
+- 93% of training tokens are unchanged (after == before), so copying `before` through already scores ~0.93; the gains are on the minority classes (DATE, LETTERS, CARDINAL, ...).
+- Do NOT train a neural network -- the machine has 1 CPU, no GPU and a ~600 s time limit.
+- You MUST train on at most 2000000 rows, NOT all 8924976. Subsample immediately when you load the data, e.g. `pd.read_csv(path, nrows=2000000)`. Loading the full training file exhausts the machine's memory and the run is killed. 2000000 rows cover almost all frequent tokens. This limit applies to TRAINING rows only -- you must still predict for every row of en_test_2.csv.zip.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format, one row per test token with id = "<sentence_id>_<token_id>":
+```
+id,after
+0_0,"Rocky"
+0_1,"Mountain"
+0_2,"News"
+etc
+```
+- Train data snippet:
+-> ${MLE_BENCH_DATA}/data/text-normalization-challenge-english-language/prepared/public/en_train.csv.zip has 8924976 rows and 5 columns: sentence_id (int64), token_id (int64), class (string, 16 token types e.g. PLAIN, PUNCT, DATE, LETTERS, CARDINAL -- not present in test), before (string), after (string). Example row: 1,0,DATE,"2006","two thousand six".
+-> en_test_2.csv.zip has 993465 rows and 3 columns: sentence_id, token_id, before.
+-> en_sample_submission_2.csv.zip has 993465 rows and 2 columns: id, after (prefilled with before).
+
+Previous solution is
+```{previous_plan_code}```
+
+The output or error message for this solution is
+```{previous_plan_error}```
+<|im_end|>
+<|im_start|>assistant:

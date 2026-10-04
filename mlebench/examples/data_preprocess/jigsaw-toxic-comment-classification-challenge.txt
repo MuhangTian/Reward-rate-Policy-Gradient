@@ -1,0 +1,22 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Datasets train.csv and test.csv are available in `${MLE_BENCH_DATA}/data/jigsaw-toxic-comment-classification-challenge/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- The machine is CPU-only (1 CPU) with 16 GB RAM and a ~600 second wall-clock limit. Keep training efficient: use sparse features and cap the vocabulary (e.g. 50000 terms) rather than dense representations of the full text. Do NOT train a neural network on this hardware.
+- Your task is to predict, for each test comment, the probability (0 to 1) of each of 6 toxicity labels: toxic, severe_toxic, obscene, threat, insult, identity_hate. Labels are not mutually exclusive -- a comment can have any subset of them, so train an independent binary classifier per label. Submissions are evaluated with the mean column-wise ROC AUC (AUC computed per label column, then averaged over the 6 labels).
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format:
+```
+id,toxic,severe_toxic,obscene,threat,insult,identity_hate
+00001cee341fdb12,0.5,0.5,0.5,0.5,0.5,0.5
+0000247867823ef7,0.5,0.5,0.5,0.5,0.5,0.5
+etc
+```
+- Train data snippet:
+-> ${MLE_BENCH_DATA}/data/jigsaw-toxic-comment-classification-challenge/prepared/public/train.csv has 159571 rows and 8 columns: id (string, e.g. "0000997932d777bf"), comment_text (string, a Wikipedia talk-page comment), and 6 binary label columns toxic, severe_toxic, obscene, threat, insult, identity_hate (int64, 0 or 1; positives are rare, from 478 rows for threat to 15294 for toxic).
+-> ${MLE_BENCH_DATA}/data/jigsaw-toxic-comment-classification-challenge/prepared/public/test.csv has 153164 rows and 2 columns: id, comment_text.
+<|im_end|>
+<|im_start|>assistant

@@ -1,0 +1,77 @@
+# Overlay merged on top of verl/trainer/config/ppo_trainer.yaml by
+# speedrun/rl/main_golf.py, together with speedrun/config.yaml. CLI dotlist
+# overrides (key=value) are merged last.
+#
+# Optimisation: critic + GAE (whitened advantages), KL-on-reward at
+# algorithm.kl_ctrl.kl_coef, and the reward-rate surrogate r' = r - delta*rho
+# with rho the 95th percentile of the NIW posterior-predictive rates.
+
+golf:
+  # null -> $GOLF_QUEUE_DIR (the exec worker's queue root).
+  queue_dir: null
+  # null -> <queue_dir>/buffer.jsonl (append-only PUCT buffer).
+  buffer_path: null
+  # One PUCT draw per row: the step is `batch_size` independent selections
+  # from the buffer, each rendered as its own prompt. PUCTBuffer.select(k)
+  # cycles from the top, so parents repeat when the buffer holds fewer
+  # valid solutions than the batch.
+  batch_size: 16
+  # Completions per PUCT draw (-> rollout.n).
+  rollout_n: 1
+  # The policy emits a change specification (DIAGNOSIS / CHANGE / RISK) and
+  # an implementer model turns it into the patched script. A failed
+  # implementation is recorded as an infrastructure fault, not a policy
+  # failure.
+  use_delta_specs: true
+  implementer_workers: 16
+  # ---- the two arms (rewards in speedrun/reward.py) ---------------------
+  #   reward-rate  use_reward_rate=true   reward_mode=quality
+  #   vanilla      use_reward_rate=false  reward_mode=time_to_target
+  # The buffer ranks parents by the same reward the policy is trained on.
+  use_reward_rate: true
+  reward_mode: quality
+  # Edit-size exploration quota in parent selection: share of the batch's
+  # parent slots reserved for the best-shaped valid nodes whose script
+  # differs from its parent by >= explore_edit_min_lines changed lines.
+  # 0.0 = plain top-k. See PUCTBuffer.select.
+  explore_edit_frac: 0.0
+  explore_edit_min_lines: 20
+  # Seed for the tie-break among nodes with equal shaped value.
+  tie_break_seed: 0
+  quality_target_loss: 3.28            # L*
+  quality_below_target_floor: 3.25     # depth is credited over L* - 3.25 = 0.03
+  quality_miss_loss: 10.0              # L_ref (reward-rate arm)
+  quality_cross_bonus: 5.0             # B (reward-rate arm)
+  quality_below_target_weight: 100.0   # w (reward-rate arm)
+  quality_invalid_reward: -10.0        # reward of an invalid attempt (reward-rate arm)
+  time_below_target_weight: 20000.0    # w in seconds per unit of loss (vanilla arm)
+  # false => every group conditions on a real previous solution from the
+  # buffer. true re-admits the unconditioned <empty> root at prior
+  # `empty_prior`.
+  allow_empty_state: false
+  # delta_max: the attempt timeout in seconds, equal to the worker's
+  # GOLF_WALL_SECONDS. Invalid attempts are charged this full time.
+  timeout: 1500
+
+data:
+  # One row per PUCT draw; rollout.n (= golf.rollout_n) expands to the full
+  # batch_size * rollout_n set inside generate_sequences.
+  train_batch_size: 16
+  max_prompt_length: 40960
+  max_response_length: 5000
+
+actor_rollout_ref:
+  actor:
+    # batch_size * rollout_n: one PPO minibatch per golf step.
+    ppo_mini_batch_size: 16
+    ppo_micro_batch_size: 1
+  rollout:
+    # Kept equal to golf.rollout_n by main_golf.py.
+    n: 1
+
+algorithm:
+  # GAE with a learned critic; masked_whiten inside compute_gae_advantage_return
+  # normalises the advantages. main_golf asserts this value.
+  adv_estimator: gae
+  gamma: 1.0
+  lam: 1.0

@@ -1,0 +1,26 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Datasets train.csv and test.csv are available in `${MLE_BENCH_DATA}/data/tabular-playground-series-may-2022/prepared/public/`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- To keep runtime and memory low, make your training efficient: subsample the training rows (see the hard row limit below) and, where it helps, use a reduced set of features via feature selection or sparse methods.
+- Column `f_27` is the only non-numeric column: a 10-character string code (e.g. "ACBADABECB") with 670919 distinct values across the 800000 training rows. DROP IT. One-hot encoding it would try to allocate a multi-terabyte array and crash, and label-encoding it fails on the test split because most test values never appear in train. Train on the numeric columns only.
+- Your task is to predict the target, the task is evaluated with AUC.
+- You MUST train on at most 100000 rows, NOT all 800000. Subsample immediately when you load the data, e.g. `pd.read_csv(path, nrows=100000)` or `pd.read_csv(path).sample(n=100000, random_state=0)`. Training on the full 800000 rows exhausts the machine's memory and the run is killed. 100000 rows is ample for a strong AUC. This limit applies to TRAINING rows only -- you must still predict for every row of test.csv.
+- You can use pre-installed packages such as: `statsmodels`, `pandas`, `timm`, `bayesian-optimization`, `scikit-learn`, `xgboost`, `numpy`, `torch`, `torchvision`, `lightGBM`, `torch-geometric`.
+- You can't access the internet so don't use any pre-trained models need downloading.
+- submission.csv should have the following format:
+```
+id,target
+900000,0.65
+900001,0.97
+900002,0.02
+etc
+```
+- Data snippet:
+-> ${MLE_BENCH_DATA}/data/tabular-playground-series-may-2022/prepared/public/train.csv has 800000 rows and 33 columns: id (int64), f_00-f_06 (float64), f_07-f_18 (int64), f_19-f_26 (float64), f_27 (string, 10-character categorical code e.g. "ACBADABECB" -- DROP THIS COLUMN, see above), f_28 (float64), f_29-f_30 (int64), target (int64, 0 or 1).
+-> ${MLE_BENCH_DATA}/data/tabular-playground-series-may-2022/prepared/public/test.csv has 32 columns (all columns except `target`)
+<|im_end|>
+<|im_start|>assistant

@@ -1,0 +1,30 @@
+<|im_start|>system
+You are given a machine learning task. You must solve the task by training a model and running the model on the test set to produce a submission file.<|im_end|>
+<|im_start|>user
+First outline your proposed solution in natural language (3-5 sentences), followed by a single markdown code block (wrapped in ```) which implements this solution. Note:
+
+- Data is available in `${MLE_BENCH_DATA}/data/denoising-dirty-documents/prepared/public/`: `train/` (115 noisy grayscale PNG scans of text), `train_cleaned/` (the same 115 images with the noise removed, identical filenames), `test/` (29 noisy PNGs to clean), and `sampleSubmission.csv`.
+- You MUST produce a submission file at `./submission.csv` by running your model on the test split.
+- Your task is to predict the clean grayscale intensity (0=black to 1=white) of every pixel of every test image. The task is evaluated with RMSE between predicted and true pixel intensities.
+- Runtime is limited to ~600 seconds on a single CPU (no GPU) with 16 GB RAM. Simple methods score well within this budget. Do NOT train a deep network.
+- Load images with `PIL.Image` (installed with torchvision); divide pixel values by 255.0 to get intensities in [0,1].
+- submission.csv must have exactly one row per test pixel (5789880 rows in total). The id is `image_row_col` with 1-indexed row and column, e.g. `110_1_1` is pixel (row 1, col 1) of test image 110.png. Build the id column and write the file with vectorized numpy/pandas operations -- a Python loop over 5.8 million rows is too slow.
+- The images are NOT all the same size: two different heights occur, in train and in test alike. They therefore cannot be stacked into one array of images -- read each image's own height and width and work at that size. Each image contributes its own height*width rows, so the number of rows per image differs.
+- You can use pre-installed packages such as: `xgboost`, `lightGBM`, `numpy`, `bayesian-optimization`, `pandas`, `scikit-learn`, `statsmodels`, `torch-geometric`, `timm`, `torchvision`, `torch`.
+- submission.csv should have the following format:
+```
+id,value
+110_1_1,1
+110_1_2,1
+...
+110_420_540,1
+111_1_1,1
+etc
+```
+(110.png is 420 tall, so it ends at `110_420_540` before 111 starts.)
+- Train data snippet:
+-> `train/` has 115 noisy grayscale PNGs (all 540 wide; 76 are 420 tall, 39 are 258 tall) with synthetic stains, wrinkles and faded spots over printed text.
+-> `train_cleaned/` has the 115 corresponding clean target images (same filenames and sizes).
+-> `test/` has 29 noisy PNGs (540 wide; 20 are 420 tall, 9 are 258 tall) to be cleaned.
+<|im_end|>
+<|im_start|>assistant
